@@ -1,9 +1,11 @@
+local RunService = game:GetService("RunService")
 local Mirror = require(script.Parent.Classes.Mirror)
 local Remote = require(script.Parent.Classes.Remote)
 
 local StoreClient = {}
 
 function StoreClient.init(self: StoreClient)
+	assert(RunService:IsClient())
 	self._Remote = Remote.new("StoreServer")
 
 	self._Remote:OnClientEvent():Connect(function(action, ...)
