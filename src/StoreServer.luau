@@ -14,9 +14,16 @@ local StoreServer = {}
 
 function StoreServer._PlayerAdded(self: StoreServer, Player: Player)
 	local Data, success = Functions:GetDataAsync(Player)
+
 	if not success then
-		Player:Kick("Data Error, Rejoin")
+		if Player.Parent then
+			Player:Kick("Data Error, Rejoin")
+		end
 		return
+	end
+
+	if not Player.Parent then
+		return -- left mid-load; _PlayerLeft already ran, nothing to save
 	end
 
 	local _Profile = Profile.new(TableUtil.Reconcile((Template :: any) :: { [string]: any }, Data or {}))
