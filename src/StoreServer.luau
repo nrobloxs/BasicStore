@@ -8,6 +8,7 @@ local Remote = require(script.Parent.Classes.Remote)
 local Functions = require(script.Parent.Modules.Help.Functions)
 local TableUtil = require(script.Parent.Modules.Help.TableUtil)
 local Template = require(script.Parent.Modules.Read.Template)
+local Types = require(script.Parent.Modules.Read.Types)
 
 local StoreServer = {}
 
@@ -64,12 +65,17 @@ function StoreServer._StartAutoSaveThread(self: StoreServer)
 	end
 end
 
-function StoreServer.init(self: StoreServer, AutoSave: boolean, AutoSave_Step_Duration: number)
+function StoreServer.init(
+	self: StoreServer,
+	template: Types.DataFormat,
+	AutoSave: boolean,
+	AutoSave_Step_Duration: number
+)
 	assert(RunService:IsServer())
 	Functions:init()
 	self._Profiles = {}
 	self._AutoSave_Locks = {}
-	self._Template = Template
+	self._Template = Template or template
 	self._Remote = Remote.new("StoreServer")
 	self.ProfileLoaded = Signal.new()
 	self.AutoSave = AutoSave or false
