@@ -105,6 +105,6 @@ function TableUtil.RetryWrap(Retries: number, Function: () -> any): (any, boolea
 	return nil, false
 end
 
-export type TableUtil = typeof(TableUtil)
+export type TableUtil = typeof(TableUtil) & {}
 
 return TableUtil :: TableUtil

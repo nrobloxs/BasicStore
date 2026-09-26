@@ -5,7 +5,8 @@ local RunService = game:GetService("RunService")
 local Signal = require(script.Parent.Modules.Help.Signal)
 local Profile = require(script.Parent.Classes.Profile)
 local Remote = require(script.Parent.Classes.Remote)
-local Functions = require(script.Parent.Modules.Help.Functions)
+local SessionStore = require(script.Parent.Modules.Core.SessionStore)
+
 local TableUtil = require(script.Parent.Modules.Help.TableUtil)
 local Template = require(script.Parent.Modules.Read.Template)
 local Types = require(script.Parent.Modules.Read.Types)
@@ -13,16 +14,32 @@ local Types = require(script.Parent.Modules.Read.Types)
 local StoreServer = {}
 
 function StoreServer._PlayerAdded(self: StoreServer, Player: Player)
-	local Data, success = Functions:GetDataAsync(Player)
+	local Data: Types.DataFormat?
+	local success = false
+	local locked = false
+	local attempts = 0
+
+	repeat
+		Data, success, locked = SessionStore:GetDataAsync(Player)
+		if not success and locked then
+			attempts += 1
+			if attempts < self.MAX_LOCK_RETRIES and Player.Parent then
+				task.wait(self.LOCK_RETRY_DELAY)
+			end
+		end
+	until success or not locked or attempts >= self.MAX_LOCK_RETRIES or not Player.Parent
 
 	if not success then
 		if Player.Parent then
-			Player:Kick("Data Error, Rejoin")
+			Player:Kick(
+				locked and "Your data is loading in another server. Please rejoin in a moment." or "Data Error, Rejoin"
+			)
+			return
 		end
-		return
 	end
 
 	if not Player.Parent then
+		SessionStore:UpdateDataAsync(Player, Data or {}, true)
 		return -- left mid-load; _PlayerLeft already ran, nothing to save
 	end
 
@@ -38,7 +55,7 @@ end
 function StoreServer._PlayerLeft(self: StoreServer, Player: Player)
 	local _Profile = self._Profiles[Player.UserId]
 	if _Profile then
-		Functions:UpdateDataAsync(Player, _Profile:GetRaw())
+		SessionStore:UpdateDataAsync(Player, _Profile:GetRaw(), true)
 		_Profile:Destroy()
 		self._Profiles[Player.UserId] = nil
 		self._AutoSave_Locks[Player] = nil
@@ -58,7 +75,7 @@ function StoreServer._StartAutoSaveThread(self: StoreServer)
 					task.spawn(function()
 						local profile = self:GetProfile(player, self.DEFAULT_TIMEOUT)
 						if profile then
-							Functions:UpdateDataAsync(player, profile:GetRaw())
+							SessionStore:UpdateDataAsync(player, profile:GetRaw())
 						end
 
 						self._AutoSave_Locks[player] = false
@@ -79,7 +96,7 @@ function StoreServer.init(
 	AutoSave_Step_Duration: number
 )
 	assert(RunService:IsServer())
-	Functions:init()
+	SessionStore:init()
 	self._Profiles = {}
 	self._AutoSave_Locks = {}
 	self._Template = Template or template
@@ -88,6 +105,8 @@ function StoreServer.init(
 	self.AutoSave = AutoSave or false
 	self.AUTOSAVE_STEP_DURATION = AutoSave_Step_Duration or 120
 	self.DEFAULT_TIMEOUT = 3
+	self.MAX_LOCK_RETRIES = 5
+	self.LOCK_RETRY_DELAY = 6
 
 	for _, player in Players:GetPlayers() do
 		self:_PlayerAdded(player)
@@ -109,7 +128,7 @@ function StoreServer.init(
 				task.spawn(function()
 					local profile = self._Profiles[player.UserId]
 					if profile then
-						Functions:UpdateDataAsync(player, profile:GetRaw())
+						SessionStore:UpdateDataAsync(player, profile:GetRaw(), true)
 					end
 				end)
 			)
@@ -178,6 +197,8 @@ export type StoreServer = typeof(StoreServer) & {
 	AutoSave: boolean,
 	AUTOSAVE_STEP_DURATION: number,
 	DEFAULT_TIMEOUT: number,
+	MAX_LOCK_RETRIES: number,
+	LOCK_RETRY_DELAY: number,
 }
 
 return StoreServer :: StoreServer
