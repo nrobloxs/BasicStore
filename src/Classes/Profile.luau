@@ -1,5 +1,6 @@
 local RunService = game:GetService("RunService")
 local Signal = require(script.Parent.Parent.Modules.Help.Signal)
+local TableUtil = require(script.Parent.Parent.Modules.Help.TableUtil)
 local Types = require(script.Parent.Parent.Modules.Read.Types)
 
 local Profile = {}
@@ -57,7 +58,7 @@ function Profile.GetRaw(self: Profile): Types.DataFormat
 		return {}
 	end
 
-	return table.clone(self._Data)
+	return TableUtil.DeepCopy(self._Data)
 end
 
 function Profile.GetDataChangedSignal(self: Profile): Signal.Signal

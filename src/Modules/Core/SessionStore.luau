@@ -76,10 +76,8 @@ function SessionStore.UpdateDataAsync(
 				error("LOCK_LOST")
 			end
 
-			local merged = TableUtil.DeepMerge((old and old.Data) or {}, NewData)
-
 			local newRecord: Types.StoredRecord = {
-				Data = merged :: Types.DataFormat,
+				Data = NewData :: Types.DataFormat,
 				SessionLock = if Release then nil else { JobId = JobID, Timestamp = os.time() },
 			}
 
@@ -89,7 +87,9 @@ function SessionStore.UpdateDataAsync(
 
 	if not success and lostLock then
 		warn(
-			"[SessionStore] Lost session lock for " .. Player.Name .. "; save skipped to avoid overwriting another server"
+			"[SessionStore] Lost session lock for "
+				.. Player.Name
+				.. "; save skipped to avoid overwriting another server"
 		)
 	end
 
